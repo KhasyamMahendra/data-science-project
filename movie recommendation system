@@ -1,0 +1,46 @@
+import pandas as pd
+from surprise import Reader, Dataset, SVD, accuracy
+from surprise.model_selection import train_test_split
+
+# Data path (replace with your actual data path)
+data_path = "your_movie_ratings.csv"
+
+# Read the ratings data
+ratings_df = pd.read_csv(data_path)
+
+# Data cleaning and preprocessing (replace with your specific logic)
+# - Handle missing values (e.g., impute with average rating)
+# - Address outliers (e.g., cap ratings within a reasonable range)
+# - Create additional features if needed (e.g., genres, timestamps)
+
+# Create a Surprise Dataset object
+reader = Reader(rating_scale=(1, 5))  # Adjust rating scale if necessary
+data = Dataset.load_from_df(ratings_df[['userId', 'movieId', 'rating']], reader)
+
+# Split data into training and testing sets
+trainset, testset = train_test_split(data, test_size=0.2, random_state=10)
+
+# Train an SVD model (consider experimenting with other algorithms)
+algo = SVD()
+algo.fit(trainset)
+
+# Function to generate top-N recommendations for a user
+def get_top_n_recommendations(user_id, n=10):
+    predictions = algo.predict(user_id, ratings_df['movieId'].unique())
+    # Sort predictions in descending order by estimated rating
+    top_n_preds = predictions.sort_values(by='est', ascending=False).head(n)
+    recommended_movie_ids = top_n_preds['iid'].astype(int).tolist()
+    # Filter movies the user hasn't seen yet
+    recommended_movies_df = ratings_df[ratings_df['userId'] == user_id].merge(
+        ratings_df[~ratings_df['movieId'].isin(recommended_movie_ids)],
+        how='left', on='movieId'
+    ).drop(columns='rating_y')
+    return recommended_movies_df[['movieId', 'title']]  # Replace 'title' with your movie title column
+
+# Example usage
+user_id = 123  # Replace with the user ID for whom you want recommendations
+top_n_recommendations_df = get_top_n_recommendations(user_id)
+print(top_n_recommendations_df)
+
+# Interactive interface using Flask or Django (refer to their documentation)
+
